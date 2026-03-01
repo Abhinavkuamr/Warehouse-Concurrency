@@ -31,8 +31,8 @@ public class StagingArea {
         Random rand = new Random(); // gives value between 0 and 1
         //rand.nextDouble() > 0.01 is true 99% of the time
         //That would deliver almost every tick so < 0.01 should suffice ig
-        // ticks * probablity = number of delivery 1000 * 0.01 = 10 in 1 day
-        if(rand.nextDouble() < 0.01){
+        // ticks * probablity = Expected    number of delivery 1000 * 0.01 = 10 in 1 day
+        if(rand.nextDouble() < 0.01){ //nextDouble = PRNG , uniformly distributed numbers 0 to 1
             //make a delivery
             LinkedList<BoxTypes> temp = BoxTypes.getRandomBoxes();
             for(var i : temp){
@@ -47,7 +47,7 @@ public class StagingArea {
     //Flow: If 3 threads comes , t1 locks sees size is 0 releas +  sleep, t2 locks sees 0 release + goes to sleep , t3 locks sees0, release +  goes to sleep
     // if a section gets empty , t1 t2 t3 can be awaken by notifyall and they all can try to satisfy that other condition too
     // 1 stocker at a time
-    //TODO: Need changes -> this design might result in LiveLock is possible
+    //TODO: Need changes -> this design might result in LiveLock
     public LinkedList<String> getBoxes(int number)
     {
         LinkedList<String> boxes = new LinkedList<>(); // No need to protect this
