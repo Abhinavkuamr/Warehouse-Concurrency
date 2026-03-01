@@ -5,8 +5,10 @@ public class EmulationClock
     private static EmulationClock clock;
     int time_tick_size; // eg. 50 ms
     int days; // examples 365; (maybe make it fixed)
-    private int tick = 0;
+    public static int tick = 0;
     private long lastUpdateTime = System.currentTimeMillis(); //initialized once object gets created
+
+    private StagingArea stgArea = StagingArea.getInstance();
 
 
     private EmulationClock(){}
@@ -33,13 +35,14 @@ public class EmulationClock
         long now = System.currentTimeMillis();
         if (now - lastUpdateTime >= time_tick_size) {
             tick++;
+            stgArea.makeDelivery();
             lastUpdateTime += time_tick_size;
         }
     }
 
     public int getTick()
     {
-        System.out.println("Tick: "+tick);
+        //System.out.println("Tick: "+tick);
         return tick;
     }
 
