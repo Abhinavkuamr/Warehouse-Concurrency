@@ -6,7 +6,7 @@ public class EmulationClock
     int time_tick_size; // eg. 50 ms
     int days; // examples 365; (maybe make it fixed)
     private int tick = 0;
-    private long lastUpdateTime = System.currentTimeMillis();
+    private long lastUpdateTime = System.currentTimeMillis(); //initialized once object gets created
 
 
     private EmulationClock(){}
@@ -51,7 +51,9 @@ public class EmulationClock
 
     public void reset()
     {
-
+        this.tick = 0;
+        this.days = 0;
+        this.time_tick_size = 0;
     }
 
     public int Complete()

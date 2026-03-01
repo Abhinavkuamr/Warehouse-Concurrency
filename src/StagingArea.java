@@ -1,6 +1,6 @@
 import java.util.LinkedList;
 
-public class DeliveryArea {
+public class StagingArea {
     private LinkedList stagingArea = new LinkedList();
 
     public void MakeDelivery()
