@@ -5,9 +5,12 @@ import java.util.Queue;
 public class main {
     public static void main(String[] args)
     {
-        EmulationClock clk = EmulationClock.getInstance(100,1);
+        // making delivery in Clock
+        EmulationClock clk = EmulationClock.getInstance(50,1);
+        Stocker.StartStocking(5); // make it asynchronus so that clock doesnt stop ticking execute() or submit() not invoke
         while(clk.getTick() != clk.Complete()){
             clk.updateTick();
+
         }
 
 

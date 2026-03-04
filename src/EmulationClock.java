@@ -3,7 +3,7 @@ import java.time.Clock;
 public class EmulationClock
 {
     private static EmulationClock clock;
-    int time_tick_size; // eg. 50 ms
+    static int time_tick_size; // eg. 50 ms
     int days; // examples 365; (maybe make it fixed)
     public static int tick = 0;
     private long lastUpdateTime = System.currentTimeMillis(); //initialized once object gets created
