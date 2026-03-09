@@ -31,10 +31,25 @@ interface logger{
         System.out.println("Tick: "+EmulationClock.tick+" Event: release_trolley "+"Trolley_id: "+mappings.get(t.currentThread()));
     }
 
-    default  void LoadEvent(LinkedList<String> boxes_taken_from_stagingArea, int waited )
+    default  void LoadEvent(LinkedList<BoxTypes> boxes_taken_from_stagingArea, int waited )
     {
         System.out.println("Tick: "+EmulationClock.tick+" Event: stocker_load "+boxes_taken_from_stagingArea+ " waited: "+waited+" tick(s)");
 
+    }
+    default void MoveEvent(String from, String to, int load, int trolleyId, int waited){
+        System.out.println("Tick: "+EmulationClock.tick+" Event: move from="+from+" to="+to+" load="+load+" trolley_id="+trolleyId+" waited: "+waited+" tick(s)");
+    }
+
+    default void StockBeginEvent(String section, int amount, int trolleyId, int waited){
+        System.out.println("Tick: "+EmulationClock.tick+" Event: stock_begin section="+section+" amount="+amount+" trolley_id="+trolleyId+" waited: "+waited+" tick(s)");
+    }
+
+    default void StockEndEvent(String section, int stocked, int remainingLoad, int trolleyId){
+        System.out.println("Tick: "+EmulationClock.tick+" Event: stock_end section="+section+" stocked="+stocked+" remaining_load="+remainingLoad+" trolley_id="+trolleyId);
+    }
+
+    default void ReturnToStagingEvent(int load, int trolleyId, int waited){
+        System.out.println("Tick: "+EmulationClock.tick+" Event: return_to_staging load="+load+" trolley_id="+trolleyId+" waited: "+waited+" tick(s)");
     }
 }
 
@@ -66,19 +81,24 @@ public class Stocker extends RecursiveTask<Boolean> implements Trolley,logger {
     * */
     @Override
     protected Boolean compute() {
-        LinkedList<String> myBoxes = new LinkedList<>(); // stocker's boxes taken from staging area
-        int startTick = EmulationClock.tick;
+
+        LinkedList<BoxTypes> myBoxes = new LinkedList<>(); // stocker's boxes taken from staging area
+
+
+        while(EmulationClock.tick < EmulationClock.Complete()) {
+
+            int startTick = EmulationClock.tick;
+            int waited = 0;
 
 
         //waited = EmulationClock.tick; // this one should be 0 tick at start
-        while(stgArea.stagingArea.isEmpty() && myBoxes.isEmpty()){
+        while (stgArea.stagingArea.isEmpty() && myBoxes.isEmpty()) {
             try {
                 Thread.currentThread().sleep(EmulationClock.time_tick_size); //just goto sleep
             } catch (InterruptedException e) {
 
             }
         }
-
 
 
         // makeDelivery done -> notifyall() called, thread came out of above while loop
@@ -88,10 +108,10 @@ public class Stocker extends RecursiveTask<Boolean> implements Trolley,logger {
 
         // t1 gets lock , t2 waits -> t1 gets 10 boxes but staging area is empty now, t2 comes checks while loop again releases lock and goes to await()
         try {
-            while(stgArea.stagingArea.isEmpty()) {
+            while (stgArea.stagingArea.isEmpty()) {
                 stgArea.lock_condition.await(); // sleeps, releases lock, wakes on signalAll
             }
-            int waited = EmulationClock.tick - startTick;
+             waited = EmulationClock.tick - startTick;
 
 
             Globals.trolleys.acquire();
@@ -101,20 +121,49 @@ public class Stocker extends RecursiveTask<Boolean> implements Trolley,logger {
             //wait time to get boxes -> cuz 1 stocker at staging area at a time
             startTick = EmulationClock.tick;
 
-            LinkedList<String> boxes_taken = stgArea.getBoxes(10 - myBoxes.size());
+            LinkedList<BoxTypes> boxes_taken = stgArea.getBoxes(10 - myBoxes.size());
             myBoxes.addAll(boxes_taken);
             Thread.sleep(EmulationClock.time_tick_size);
 
             waited = EmulationClock.tick - startTick;
             logger.super.LoadEvent(boxes_taken, waited); // print LoadEvent
-            //fork to make delivery in warehouse
-            //TODO: warehouse
+
         } catch (InterruptedException e) {
         } finally {
             stgArea.lock.unlock();
+
         }
 
-        return null;
+            //fork to make delivery in warehouse
+            //TODO: warehouse forking
+            int trolleyId = Globals.mappings.get(Thread.currentThread());
+            WarehouseTask task = new WarehouseTask(myBoxes, trolleyId);
+            task.fork();
+            LinkedList<BoxTypes> leftover = task.join(); // blocks until warehouse done
+            if (!leftover.isEmpty()) {
+                startTick = EmulationClock.tick;
+                try {
+                    Thread.sleep(EmulationClock.time_tick_size * (10 + leftover.size()));
+                } catch (InterruptedException e) {
+
+                }
+                waited = EmulationClock.tick - startTick;
+                logger.super.MoveEvent("warehouse", "staging", leftover.size(), trolleyId, waited);
+                logger.super.ReturnToStagingEvent(leftover.size(), trolleyId, waited);
+                myBoxes = leftover; // carry leftovers into next loop iteration
+            }
+            else {
+                myBoxes = new LinkedList<>();
+                Globals.trolleys.release();
+                logger.super.TrolleyReleaseEvent(Thread.currentThread(), Globals.mappings);
+            }
+
+
+
+    }
+
+            return null;
+
     }
 
     static void StartStocking(int stockers) {
@@ -126,4 +175,5 @@ public class Stocker extends RecursiveTask<Boolean> implements Trolley,logger {
         }
 
     }
+
 }

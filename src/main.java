@@ -7,7 +7,7 @@ public class main {
     {
         // making delivery in Clock
         EmulationClock clk = EmulationClock.getInstance(50,1);
-        Stocker.StartStocking(5); // make it asynchronus so that clock doesnt stop ticking execute() or submit() not invoke
+        Stocker.StartStocking(2); // make it asynchronus so that clock doesnt stop ticking execute() or submit() not invoke
         while(clk.getTick() != clk.Complete()){
             clk.updateTick();
 

@@ -4,7 +4,7 @@ public class EmulationClock
 {
     private static EmulationClock clock;
     static int time_tick_size; // eg. 50 ms
-    int days; // examples 365; (maybe make it fixed)
+    static int days; // examples 365; (maybe make it fixed)
     public static int tick = 0;
     private long lastUpdateTime = System.currentTimeMillis(); //initialized once object gets created
 
@@ -59,7 +59,7 @@ public class EmulationClock
         this.time_tick_size = 0;
     }
 
-    public int Complete()
+    public static int Complete()
     {
         //return the final tick ; 1 day = 1000 ticks
         return days * 1000;

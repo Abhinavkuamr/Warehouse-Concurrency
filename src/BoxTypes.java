@@ -6,7 +6,6 @@ public enum BoxTypes {
     medical,
     tools,
     animeCD,
-    manga,
     moviesCD;
 
     // control number of boxes needed
