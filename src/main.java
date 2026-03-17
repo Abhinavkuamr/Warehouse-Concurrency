@@ -7,11 +7,9 @@ import java.util.LinkedList;
 import java.util.Properties;
 import java.util.Queue;
 
-import java.awt.*;
-import javax.swing.*;
 
 public class main {
-    public static void main(String[] args) throws IOException {
+    public static void main() throws IOException {
         int stockers;
         int pickers;
         int trolleys;
@@ -42,7 +40,11 @@ public class main {
             Picker.pickAttemptyPerDay = Integer.valueOf(prop.getProperty("pickAttemptyPerDay"));
         Stocker.stockerBreakTickValue = Integer.valueOf(prop.getProperty("stockerBreakTickValue"));
             Warehouse.priorityEnabled = Boolean.valueOf(prop.getProperty("priorityEnabled"));
-
+        Warehouse.electronicsSectionCapacity = Integer.valueOf(prop.getProperty("electronicsSectionCapacity"));
+        Warehouse.toolsSectionCapacity = Integer.valueOf(prop.getProperty("toolsSectionCapacity"));
+        Warehouse.medsSectionCapacity = Integer.valueOf(prop.getProperty("medsSectionCapacity"));
+        Warehouse.animeCdSectionCapacity = Integer.valueOf(prop.getProperty("animeCdSectionCapacity"));
+        Warehouse.movieCdSectionCapacity = Integer.valueOf(prop.getProperty("movieCdSectionCapacity"));
 
 
 

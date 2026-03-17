@@ -46,12 +46,17 @@ class Warehouse implements logger {
 
     HashMap<BoxTypes, Section> sectionMap = new HashMap<>();
 
-    //TODO: warehousesection limit should be given by user not hardcoded
-    Section electronics = new Section(BoxTypes.electronics, 100);
-    Section tools = new Section(BoxTypes.tools, 100);
-    Section meds = new Section(BoxTypes.medical, 100);
-    Section animeCd = new Section(BoxTypes.animeCD, 100);
-    Section movieCd = new Section(BoxTypes.moviesCD, 100);
+    static int electronicsSectionCapacity;
+    static int toolsSectionCapacity;
+    static int medsSectionCapacity;
+    static int animeCdSectionCapacity;
+    static int movieCdSectionCapacity;
+
+    Section electronics = new Section(BoxTypes.electronics, electronicsSectionCapacity);
+    Section tools = new Section(BoxTypes.tools, toolsSectionCapacity);
+    Section meds = new Section(BoxTypes.medical, medsSectionCapacity);
+    Section animeCd = new Section(BoxTypes.animeCD, animeCdSectionCapacity);
+    Section movieCd = new Section(BoxTypes.moviesCD, movieCdSectionCapacity);
 
     private Warehouse() {
         sectionMap.put(BoxTypes.electronics, electronics);
