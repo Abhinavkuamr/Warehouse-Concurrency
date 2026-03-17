@@ -9,6 +9,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class StagingArea {
     public  Queue<BoxTypes> stagingArea = new LinkedList<>(); // Shared Memory
     public static StagingArea stgArea;
+    public static double deliveryProbablity = 0.01;
 
     ReentrantLock lock = new ReentrantLock();  // acquire or release locks for critical sections
     Condition lock_condition = lock.newCondition(); // to use - await() , wait() , signal(), signalAll() for lock
@@ -36,7 +37,7 @@ public class StagingArea {
         Double probablity = rand.nextDouble();
         //System.out.println("Random: "+probablity);
 
-        if(probablity < 0.01){ //nextDouble = PRNG , uniformly distributed numbers 0 to 1
+        if(probablity < deliveryProbablity){ //nextDouble = PRNG , uniformly distributed numbers 0 to 1
 
             lock.lock();
 
@@ -47,7 +48,7 @@ public class StagingArea {
                 for(var i : temp){
                     stagingArea.add(i);
                 }
-                System.out.println("tick: "+EmulationClock.tick +" Delivery Made: "+temp);
+                System.out.println("Tick="+EmulationClock.tick +" Delivery_Made="+temp);
                 Thread.currentThread().sleep(EmulationClock.time_tick_size);
                 lock_condition.signalAll();
             } catch (Exception e) {
@@ -63,7 +64,7 @@ public class StagingArea {
     }
 
     //Flow: If 3 threads comes , t1 locks sees size is 0 releas +  sleep, t2 locks sees 0 release + goes to sleep , t3 locks sees0, release +  goes to sleep
-    // if a section gets empty , t1 t2 t3 can be awaken by notifyall and they all can try to satisfy that other condition too
+    // if a warehousesection gets empty , t1 t2 t3 can be awaken by notifyall and they all can try to satisfy that other condition too
     // 1 stocker at a time
     //TODO: Need changes -> this design might result in LiveLock
     public  LinkedList<BoxTypes> getBoxes(int number)
@@ -75,12 +76,12 @@ public class StagingArea {
             while(stagingArea.isEmpty()){
                  lock_condition.await();//release Lock + goto Sleep, if stagingArea is empty; if not empty re-acquire the lock
             }
-            // critical section starts
+            // critical warehousesection starts
             int totalBoxPossible = Math.min(stagingArea.size(), number);
             for(int i = 0; i< totalBoxPossible; i++){
                 boxes.add(stagingArea.poll());
             }
-            //critical section ends
+            //critical warehousesection ends
             lock_condition.signalAll(); // make all waiting threads awake ; DONT USE signal() -> might awake some different thread that is not here => livelockfor staging area for awhile
             //signal before releasing lock otherwise illegalMonitorStateException
         } catch (Exception e) {

@@ -1,3 +1,4 @@
+import javax.swing.*;
 import java.util.LinkedList;
 import java.util.Random;
 
@@ -24,5 +25,12 @@ public enum BoxTypes {
     // No control over no. of box delivery
     public static LinkedList<BoxTypes> getRandomBoxes() {
         return getRandomBoxes(10);
+    }
+    public static BoxTypes getRandomType()
+    {
+        BoxTypes[] values = BoxTypes.values();
+        Random rand = new Random();
+        return values[rand.nextInt(values.length)];
+
     }
 }

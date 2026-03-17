@@ -1,15 +1,19 @@
 import java.util.LinkedList;
+import java.util.Random;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 //use it at last to startStocking function
 class Globals {
-    static Semaphore trolleys = new Semaphore(10);
-    static AtomicInteger trolleyID = new AtomicInteger(0);
-    static ConcurrentHashMap<Thread, Integer> mappings = new ConcurrentHashMap<>();
+    static Semaphore trolleys;
+    static AtomicInteger trolleyID = new AtomicInteger(0); //for trolley ID , atomic operation , no disturbance from other threads
+    static ConcurrentHashMap<Thread, Integer> mappings = new ConcurrentHashMap<>(); //Thread to trolley(sema) mappings
 
-    static ForkJoinPool fjPool = new
-            ForkJoinPool();
+    static ForkJoinPool fjPool = new ForkJoinPool();
+
+    static void init(int trolleyCount) {
+        trolleys = new Semaphore(trolleyCount);
+    }
 }
 
 interface  Trolley {
@@ -24,52 +28,72 @@ interface  Trolley {
 
 interface logger{
     default void TrolleyAcquireEvent(Thread t,ConcurrentHashMap mappings, int waited ){
-        System.out.println("Tick: "+EmulationClock.tick+" Event: acquire_trolley "+"Trolley_id: "+mappings.get(t.currentThread()) + " waited: "+waited+" tick(s)");
+        System.out.println("Tick="+EmulationClock.tick+" Event=acquire_trolley "+"Trolley_id="+mappings.get(t.currentThread()) + " waited="+waited+" tick(s)");
     }
 
     default void TrolleyReleaseEvent(Thread t,ConcurrentHashMap mappings){
-        System.out.println("Tick: "+EmulationClock.tick+" Event: release_trolley "+"Trolley_id: "+mappings.get(t.currentThread()));
+        System.out.println("Tick="+EmulationClock.tick+" Event=release_trolley "+"Trolley_id="+mappings.get(t.currentThread()));
     }
 
-    default  void LoadEvent(LinkedList<BoxTypes> boxes_taken_from_stagingArea, int waited )
-    {
-        System.out.println("Tick: "+EmulationClock.tick+" Event: stocker_load "+boxes_taken_from_stagingArea+ " waited: "+waited+" tick(s)");
-
+    default void LoadEvent(LinkedList<BoxTypes> boxes, int waited, int stockerId) {
+        System.out.println("Tick="+EmulationClock.tick+" Event=stocker_load stocker_id="+stockerId+" "+boxes+" waited="+waited+" tick(s)");
     }
-    default void MoveEvent(String from, String to, int load, int trolleyId, int waited){
-        System.out.println("Tick: "+EmulationClock.tick+" Event: move from="+from+" to="+to+" load="+load+" trolley_id="+trolleyId+" waited: "+waited+" tick(s)");
+    default void MoveEvent(String from, String to, int load, int trolleyId, int waited, int stockerId){
+        System.out.println("Tick="+EmulationClock.tick+" Event=move stocker_id="+stockerId+" from="+from+" to="+to+" load="+load+" trolley_id="+trolleyId+" waited="+waited+" tick(s)");
     }
 
-    default void StockBeginEvent(String section, int amount, int trolleyId, int waited){
-        System.out.println("Tick: "+EmulationClock.tick+" Event: stock_begin section="+section+" amount="+amount+" trolley_id="+trolleyId+" waited: "+waited+" tick(s)");
+    default void StockBeginEvent(String section, int amount, int trolleyId, int waited, int stockerId) {
+        System.out.println("Tick="+EmulationClock.tick+" Event=stock_begin stocker_id="+stockerId+" section="+section+" amount="+amount+" trolley_id="+trolleyId+" waited="+waited+" tick(s)");
     }
 
-    default void StockEndEvent(String section, int stocked, int remainingLoad, int trolleyId){
-        System.out.println("Tick: "+EmulationClock.tick+" Event: stock_end section="+section+" stocked="+stocked+" remaining_load="+remainingLoad+" trolley_id="+trolleyId);
+    default void StockEndEvent(String section, int stocked, int remainingLoad, int trolleyId, int stockerId){
+        System.out.println("Tick="+EmulationClock.tick+" Event=stock_end stocker_id="+stockerId+" section="+section+" stocked="+stocked+" remaining_load="+remainingLoad+" trolley_id="+trolleyId);
     }
 
     default void ReturnToStagingEvent(int load, int trolleyId, int waited){
-        System.out.println("Tick: "+EmulationClock.tick+" Event: return_to_staging load="+load+" trolley_id="+trolleyId+" waited: "+waited+" tick(s)");
+        System.out.println("Tick="+EmulationClock.tick+" Event=return_to_staging load="+load+" trolley_id="+trolleyId+" waited="+waited+" tick(s)");
+    }
+
+    default void PickStartEvent(int pickId, String section, int trolleyId) {
+        System.out.println("Tick="+EmulationClock.tick+" Event=pick_start pick_id="+pickId+" section="+section+" trolley_id="+trolleyId);
+    }
+
+    default void PickDoneEvent(int pickId, String section, int picked, int trolleyId, int waitedTicks) {
+        System.out.println("Tick="+EmulationClock.tick+" Event=pick_done pick_id="+pickId+" section="+section+" picked="+picked+" trolley_id="+trolleyId+" waited="+waitedTicks+" tick(s)");
+    }
+
+    default void StockerBreakStartEvent( ){
+        System.out.println("Tick="+EmulationClock.tick+" Event=stocker_break_start ");
+    }
+
+    default  void StockerBreakEndEvent(){
+        System.out.println("Tick="+EmulationClock.tick+" Event=stocker_break_end ");
     }
 }
 
 // TODO: 1. Take boxes from Staging area
 // TODO: 2. Make Stocker follow singleton pattern too
 // create that Global class forjoin -> call it from main.java where clock is runnning
-public class Stocker extends RecursiveTask<Boolean> implements Trolley,logger {
+public class Stocker extends RecursiveTask<Boolean> implements logger {
 
     static int box_limit;
     static int number  ; // user input
     StagingArea stgArea = StagingArea.getInstance();  // have entire access as a stocker to staging area
 
+    static Boolean stockerBreakEnabled = false;
+    static int stockerBreakTickValue;
+
+
+    static AtomicInteger stockerIdCounter = new AtomicInteger(0);
+    int stockerId;
 
 
 
-    Stocker(int box_limit, int number)
-    {
+
+    Stocker(int box_limit, int number) {
         this.box_limit = box_limit;
         this.number = number;
-
+        this.stockerId = stockerIdCounter.addAndGet(1);
     }
 
 
@@ -89,6 +113,8 @@ public class Stocker extends RecursiveTask<Boolean> implements Trolley,logger {
 
             int startTick = EmulationClock.tick;
             int waited = 0;
+
+
 
 
         //waited = EmulationClock.tick; // this one should be 0 tick at start
@@ -121,12 +147,12 @@ public class Stocker extends RecursiveTask<Boolean> implements Trolley,logger {
             //wait time to get boxes -> cuz 1 stocker at staging area at a time
             startTick = EmulationClock.tick;
 
-            LinkedList<BoxTypes> boxes_taken = stgArea.getBoxes(10 - myBoxes.size());
+            LinkedList<BoxTypes> boxes_taken = stgArea.getBoxes(10 - myBoxes.size()); //box limit is hardcoded
             myBoxes.addAll(boxes_taken);
             Thread.sleep(EmulationClock.time_tick_size);
 
             waited = EmulationClock.tick - startTick;
-            logger.super.LoadEvent(boxes_taken, waited); // print LoadEvent
+            logger.super.LoadEvent(boxes_taken, waited, stockerId); // print LoadEvent
 
         } catch (InterruptedException e) {
         } finally {
@@ -137,7 +163,7 @@ public class Stocker extends RecursiveTask<Boolean> implements Trolley,logger {
             //fork to make delivery in warehouse
             //TODO: warehouse forking
             int trolleyId = Globals.mappings.get(Thread.currentThread());
-            WarehouseTask task = new WarehouseTask(myBoxes, trolleyId);
+            WarehouseTask task = new WarehouseTask(myBoxes, trolleyId, stockerId);
             task.fork();
             LinkedList<BoxTypes> leftover = task.join(); // blocks until warehouse done
             if (!leftover.isEmpty()) {
@@ -148,7 +174,7 @@ public class Stocker extends RecursiveTask<Boolean> implements Trolley,logger {
 
                 }
                 waited = EmulationClock.tick - startTick;
-                logger.super.MoveEvent("warehouse", "staging", leftover.size(), trolleyId, waited);
+                logger.super.MoveEvent("warehouse", "staging", leftover.size(), trolleyId, waited, stockerId);
                 logger.super.ReturnToStagingEvent(leftover.size(), trolleyId, waited);
                 myBoxes = leftover; // carry leftovers into next loop iteration
             }
@@ -156,6 +182,21 @@ public class Stocker extends RecursiveTask<Boolean> implements Trolley,logger {
                 myBoxes = new LinkedList<>();
                 Globals.trolleys.release();
                 logger.super.TrolleyReleaseEvent(Thread.currentThread(), Globals.mappings);
+                // trolley has been released, now stocker can go on break
+                if(stockerBreakEnabled){
+                    if(new Random().nextDouble() < 1.0000 / stockerBreakTickValue ){
+                        //log it
+                        logger.super.StockerBreakStartEvent();
+                        try {
+                            Thread.currentThread().sleep(150 * EmulationClock.time_tick_size);
+                        } catch (InterruptedException e) {
+
+                        }
+                        finally {
+                            logger.super.StockerBreakEndEvent();
+                        }
+                    }
+                }
             }
 
 
